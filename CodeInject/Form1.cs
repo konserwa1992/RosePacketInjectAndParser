@@ -104,6 +104,7 @@ namespace CodeInject
 
         private void button3_Click_1(object sender, EventArgs e)
         {
+            GameMethods.AttachHookSendHook();
             PacketParserManager.Instance.Record = !PacketParserManager.Instance.Record;
 
             if (PacketParserManager.Instance.Record)
