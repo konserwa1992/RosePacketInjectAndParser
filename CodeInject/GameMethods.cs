@@ -61,10 +61,10 @@ namespace CodeInject
         #region MemoryHooks
         public unsafe delegate void SendFunc(IntPtr a, Int16* packet);
 
-      //  00007ff7bdc9ec69 int64_t sub_7ff7bdc9ec69(int32_t* arg1, int64_t arg2)
-        public unsafe delegate Int64 ReciveFunc(IntPtr a, IntPtr packet);
+        //  00007ff7bdc9ec69 int64_t sub_7ff7bdc9ec69(int32_t* arg1, int64_t arg2)
+        public unsafe delegate Int64 ReciveFunc(IntPtr a, Int16* packet);
 
-        public unsafe delegate Int64 ReciveFunc2(void* a, IntPtr packet,Int32 arg3, Int32 arg4);
+        public unsafe delegate Int64 ReciveFunc2(Int64* packet);
 
 
         public static SendFunc hookSendFunction;
@@ -84,7 +84,7 @@ namespace CodeInject
                 hookSendFunction = PacketSendHook;
 
                 hookSend =
-                EasyHook.LocalHook.Create(new IntPtr((long)(GameMethods.GetBaseAdress() + 0x268DC)), hookSendFunction, null);
+                EasyHook.LocalHook.Create(new IntPtr((long)(GameMethods.GetBaseAdress() + 0x26913)), hookSendFunction, null);
                 hookSend.ThreadACL.SetExclusiveACL(new int[] { Thread.CurrentThread.ManagedThreadId });
             }
 
@@ -95,10 +95,11 @@ namespace CodeInject
             if (hookRecive == null)
             {
                 hookRecivFunction = PacketReciveHook;
-            //hookRecivFunction2 = PacketReciveHook2;
+           //    hookRecivFunction2 = PacketReciveHook2;
 
-                hookRecive =
-                EasyHook.LocalHook.Create(new IntPtr((long)(GameMethods.GetBaseAdress() + 0xEC69)), hookRecivFunction, null);
+                hookRecive = //EasyHook.LocalHook.Create(new IntPtr((long)(GameMethods.GetBaseAdress() + 0x26BCA)), hookRecivFunction2, null);
+
+                EasyHook.LocalHook.Create(new IntPtr((long)(GameMethods.GetBaseAdress() + 0xEC91)), hookRecivFunction, null);
                 hookRecive.ThreadACL.SetExclusiveACL(new int[] { Thread.CurrentThread.ManagedThreadId });
             }
             /*hookRecive =
@@ -107,44 +108,28 @@ namespace CodeInject
         }
 
 
-        public unsafe static Int64 PacketReciveHook2(void* a, IntPtr packet, Int32 arg3, Int32 arg4)
+        public unsafe static Int64 PacketReciveHook(IntPtr a, Int16* packet)
         {
+            Console.WriteLine($"Size: {GameMethods.GetInt32(((ulong)a.ToInt64() - 0x68) + 0x22)} Packet Recive:");
 
-            StreamWriter logger = new StreamWriter("logger.txt", true);
-            if (arg3 == 6)
-                logger.WriteLine($"{DateTime.Now.ToString("yyyy/MM/dd HH:MM:ss")}{GameMethods.GetShort((ulong)packet.ToInt64())} |||| {packet.ToInt64().ToString("X2")} |||  {arg3} ||||| {arg4}");
+            byte[] PacketData = new byte[GameMethods.GetShort((ulong)packet)];
 
-            if (arg3 == 6)
-            {
-               // Console.WriteLine($"Size: {GameMethods.GetInt32(((ulong)a.ToInt64() - 0x68) + 0x22)} Packet Recive: {packet.ToInt64().ToString("X")}");
+            GameMethods.GetByteArray((ulong)packet, PacketData, PacketData.Length);
 
-                byte[] PacketData = new byte[GameMethods.GetShort((ulong)packet.ToInt64())];
-
-                GameMethods.GetByteArray((ulong)packet.ToInt64(), PacketData, PacketData.Length);
-                for (int i = 0; i < PacketData.Length; i++)
-                {
-                    Console.Write(PacketData[i].ToString("X2") + " ");
-                }
-                Console.WriteLine();
-                Console.WriteLine("------------------------------------------------------");
-
-                PacketParserManager.Instance.NewPacketArrived(null, new PacketArgs { Packet = new RecivePacket(PacketData) });
-            }
-
-
-            return RecivePacketFromServer2(a, packet,arg3,arg4);
-        }
-        public unsafe static Int64 PacketReciveHook(IntPtr a, IntPtr packet)
-        {
-            Console.WriteLine($"Size: {GameMethods.GetInt32(((ulong)a.ToInt64() - 0x68) + 0x22)} Packet Recive: {packet.ToInt64().ToString("X")}");
-
-            byte[] PacketData = new byte[GameMethods.GetShort((ulong)packet.ToInt64())];
-
-            GameMethods.GetByteArray((ulong)packet.ToInt64(), PacketData, PacketData.Length);
+            string toOutFile = "";
             for(int i=0;i<PacketData.Length;i++)
             {
                 Console.Write(PacketData[i].ToString("X2")+ " ");
+                toOutFile += PacketData[i].ToString("X2") + " ";
             }
+
+
+            StreamWriter stringWriter = new StreamWriter("LOGGER.txt",true);
+            stringWriter.WriteLine("\n[S=>C]");
+            stringWriter.WriteLine(toOutFile);
+            stringWriter.Close();
+
+
             Console.WriteLine();
             Console.WriteLine("------------------------------------------------------");
 
@@ -171,24 +156,28 @@ namespace CodeInject
         }
 
 
-        public unsafe static Int64 RecivePacketFromServer2(void* a, IntPtr packet, Int32 arg3, Int32 arg4)
-        {
-            //3B471
-            GameMethods.ReciveFunc2 delegateRecive = (GameMethods.ReciveFunc2)Marshal.GetDelegateForFunctionPointer(new IntPtr((long)(GameMethods.GetBaseAdress() + 0x3B471)), typeof(GameMethods.ReciveFunc2));
-            return delegateRecive(a, packet,arg3,arg4);
-        }
 
-        public unsafe static Int64 RecivePacketFromServer(IntPtr a, IntPtr packet)
+        public unsafe static Int64 RecivePacketFromServer(IntPtr a, Int16* packet)
         {
             //3B471
-            GameMethods.ReciveFunc delegateRecive = (GameMethods.ReciveFunc)Marshal.GetDelegateForFunctionPointer(new IntPtr((long)(GameMethods.GetBaseAdress() + 0xEC69)), typeof(GameMethods.ReciveFunc));
+            GameMethods.ReciveFunc delegateRecive = (GameMethods.ReciveFunc)Marshal.GetDelegateForFunctionPointer(new IntPtr((long)(GameMethods.GetBaseAdress() + 0xEC91)), typeof(GameMethods.ReciveFunc));
             return delegateRecive(a, packet);
         }
 
+
+        //update:2023.05.26
         public unsafe static void SendPacketToServer(Int16* packet)
         {
-            GameMethods.SendFunc delegateSend = (GameMethods.SendFunc)Marshal.GetDelegateForFunctionPointer(new IntPtr((long)(GameMethods.GetBaseAdress() + 0x268DC)), typeof(GameMethods.SendFunc));
-            delegateSend(new IntPtr((long)GameMethods.GetInt64((GameMethods.GetBaseAdress() + 0x1126948)) + 0x000016D8 + 0x320), packet);
+            GameMethods.SendFunc delegateSend = (GameMethods.SendFunc)Marshal.GetDelegateForFunctionPointer(new IntPtr((long)(GameMethods.GetBaseAdress() + 0x26913)), typeof(GameMethods.SendFunc));
+            delegateSend(new IntPtr((long)GameMethods.GetInt64((GameMethods.GetBaseAdress() + 0x112f968)) + 0x000016D8 + 0x320), packet);
+        }
+
+
+        public unsafe static void SendPacketToClient(Int16* packet)
+        {
+
+            GameMethods.ReciveFunc delegateRecive = (GameMethods.ReciveFunc)Marshal.GetDelegateForFunctionPointer(new IntPtr((long)(GameMethods.GetBaseAdress() + 0xEC91)), typeof(GameMethods.ReciveFunc));
+            delegateRecive(new IntPtr((long)GameMethods.GetInt64((GameMethods.GetBaseAdress() + 0x112f968)) + 0x000016D8 + 0x320 + 0x68), packet);
         }
         #endregion
     }

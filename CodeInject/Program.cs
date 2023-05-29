@@ -1,4 +1,6 @@
 ﻿using CodeInject;
+using CodeInject.NPC;
+using CodeInject.Packet;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,12 +20,14 @@ namespace ISpace
         static Form1 form;
 
         //public static int IMain(string args)
-        public static int IMain(string msg)
+        public static unsafe int IMain(string msg)
         {
-           // AllocConsole();
             GameMethods.AttachHookReciveHook();
+            PacketParserManager.Instance.Record = !PacketParserManager.Instance.Record;
+            MessageBox.Show(CharacterData.Instance.PlayerPosition->y.ToString());
             form = new Form1();
-            form.ShowDialog();
+             form.ShowDialog();
+            AllocConsole();
             return 0;
         }
 

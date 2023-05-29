@@ -16,6 +16,7 @@ using System.Timers;
 using CodeInject.Commands;
 using System.IO;
 using CodeInject.GameData;
+using System.Diagnostics;
 
 namespace CodeInject
 {
@@ -23,6 +24,8 @@ namespace CodeInject
     {
         public Form1()
         {
+
+ 
             InitializeComponent();
             PacketParserManager.Instance.NewPacketArrived += AddNewPacketToList;
 
@@ -98,7 +101,13 @@ namespace CodeInject
             fixed (byte* pointer = byteArray)
             {
                 IntPtr p = new IntPtr(pointer);
-                GameMethods.SendPacketToServer((short*)p.ToPointer());
+               if (PacketDirection.SelectedItem.ToString() == "S->C")
+               {
+                    GameMethods.SendPacketToClient((short*)p.ToPointer());
+               }else
+               {
+                    GameMethods.SendPacketToServer((short*)p.ToPointer());
+               }
             }
         }
 
@@ -214,10 +223,15 @@ namespace CodeInject
             _stream.Close();
         }
 
+        private unsafe void PlayerUpdateData()
+        {
+            lPlayerPosition.Text = $"Position: {{X:{CharacterData.Instance.PlayerPosition->x} Y:{CharacterData.Instance.PlayerPosition->y}}}";
+        }
+
         private void timer1_Tick(object sender, EventArgs e)
         {
             listBox2.Items.Clear();
-            foreach (INPC npc in PacketParserManager.Instance.npcList)
+            foreach (INPC npc in PacketParserManager.Instance.npcList.ToList())
             {
                 listBox2.Items.Add(MonsterInfoList.GetNameByID(npc.NPCModelNameID) + " ID:" + npc.ID.ToString() + " POS:"+ npc.Position.ToString());
             }
@@ -242,9 +256,10 @@ namespace CodeInject
         }
 
         INPC selected=null;
-        private void timer2_Tick_1(object sender, EventArgs e)
+        private unsafe void timer2_Tick_1(object sender, EventArgs e)
         {
-            if(selected != null && PacketParserManager.Instance.npcList.FirstOrDefault(x=>x.ID==selected.ID)!=null)
+            PlayerUpdateData();
+            if (selected != null && PacketParserManager.Instance.npcList.FirstOrDefault(x=>x.ID==selected.ID)!=null)
             {
                 AttackCommand command = new AttackCommand()
                 {
@@ -255,7 +270,10 @@ namespace CodeInject
                 command.Execute();
             }else
             {
-                selected = PacketParserManager.Instance.npcList[(new Random().Next(PacketParserManager.Instance.npcList.Count))];
+                // selected = PacketParserManager.Instance.npcList[(new Random().Next(PacketParserManager.Instance.npcList.Count))];
+                selected = PacketParserManager.Instance.npcList.OrderBy(x=> Math.Sqrt(Math.Pow(CharacterData.Instance.PlayerPosition->x - x.Position.X, 2) + Math.Pow(CharacterData.Instance.PlayerPosition->y - x.Position.Y, 2))).First();
+
+                lMonsterData.Text = $"ID: {selected.ID} Position: {selected.Position.ToString()}";
             }
         }
 
@@ -287,6 +305,18 @@ namespace CodeInject
                         }
 
                         lOutPutConvert.Text = BitConverter.ToDouble(byteArray, int.Parse(tOffset.Text)).ToString();
+                        break;
+                    }
+                case 2:
+                    {
+
+                        byte[] byteArray = new byte[packet.Length / 2];
+                        for (int i = 0; i < byteArray.Length; i++)
+                        {
+                            byteArray[i] = Convert.ToByte(packet.Substring(i * 2, 2), 16);
+                        }
+
+                        lOutPutConvert.Text = BitConverter.ToInt16(byteArray, int.Parse(tOffset.Text)).ToString();
                         break;
                     }
             }
