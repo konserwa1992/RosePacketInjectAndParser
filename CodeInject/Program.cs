@@ -24,7 +24,7 @@ namespace ISpace
         {
             GameMethods.AttachHookReciveHook();
             PacketParserManager.Instance.Record = !PacketParserManager.Instance.Record;
-            MessageBox.Show(CharacterData.Instance.PlayerPosition->y.ToString());
+          //  MessageBox.Show(CharacterData.Instance.PlayerPosition->y.ToString());
             form = new Form1();
              form.ShowDialog();
             AllocConsole();
